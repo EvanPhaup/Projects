@@ -6,6 +6,9 @@
 #include <random> // for random number generation
 #include <set>
 
+// Word List Link
+// https://gist.github.com/dracos/dd0668f281e685bad51479e5acaadb93
+
 // Inputs: QWidget *parent - Pointer to the parent widget
 // Description: Initializes the main window, connects buttons to respective methods, initializes variables, and selects a random word for the game.
 MainWindow::MainWindow(QWidget *parent)
