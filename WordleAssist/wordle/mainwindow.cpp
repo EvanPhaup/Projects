@@ -6,6 +6,8 @@
 #include <random> // for random number generation
 #include <set>
 
+// Inputs: QWidget *parent - Pointer to the parent widget
+// Description: Initializes the main window, connects buttons to respective methods, initializes variables, and selects a random word for the game.
 MainWindow::MainWindow(QWidget *parent)
     : QMainWindow(parent)
     , ui(new Ui::MainWindow)
@@ -13,54 +15,63 @@ MainWindow::MainWindow(QWidget *parent)
     ui->setupUi(this);
 
     this->setWindowTitle("WordleAssist");
+	
+	// Connect Buttons to Methods
     connect(ui->guessButton, &QPushButton::clicked, this, &MainWindow::checkGuess);
     connect(ui->updateButton, &QPushButton::clicked, this, &MainWindow::updateAssistant);
     connect(ui->restartGameButton, &QPushButton::clicked, this, &MainWindow::restartGame);
     connect(ui->restartAssistButton, &QPushButton::clicked, this, &MainWindow::restartAssistant);
+	
+	// Initialize Variables
     gameGuessCount = 0;
     assistantGuessCount = 0;
     selectRandomWord(true, true);
 }
 
+// Destructor for the MainWindow class
+// Description: Performs cleanup and deallocates resources when the MainWindow object is destroyed.
 MainWindow::~MainWindow()
 {
     delete ui;
 }
 
+// Inputs: bool initGameList - Flag indicating whether to initialize the game word list
+//         bool initAssistantList - Flag indicating whether to initialize the assistant word list
+// Description: Loads words from a file, selects a random word, and initializes word lists based on input flags.
 void MainWindow::selectRandomWord(bool initGameList, bool initAssistantList) {
-    // Load text from a .txt file into an array when MainWindow is created
-    std::ifstream file("wordlist.txt"); // Replace "../wordlist.txt" with your file's path
+    // Load word list
+    std::ifstream file("wordlist.txt");
 
     if (file.is_open()) {
+		
+		// Store each word into QStringList
         std::string line;
         while (std::getline(file, line)) {
-            textArray.append(QString::fromStdString(line)); // Store each line from the file in the vector
+            textArray.append(QString::fromStdString(line)); 
         }
 
-        file.close(); // Close the file after reading
+        file.close();
 
         if (!textArray.empty()) {
+			
+			// Randomly select word
             std::random_device rd;
-            std::mt19937 gen(rd()); // Initialize the random number generator without a fixed seed
-
-            // Generate a random index within the range of textArray size
+            std::mt19937 gen(rd());
             std::uniform_int_distribution<> dist(0, textArray.size() - 1);
             int randomIndex = dist(gen);
-
-            // Get the randomly selected word from textArray and store it in the QString variable
             randomlySelectedWord = textArray[randomIndex];
 
+			// Initialize word lists for each tab
             if (initGameList) {
                 gameList = textArray;
             }
             if (initAssistantList) {
                 assistList = textArray;
             }
-
+			
+			// Display Initial Word Lists
             displayInitialList(initGameList, initAssistantList);
-            //displayFilteredList();
 
-            // For demonstration, output the selected word to qDebug
             qDebug() << "Randomly selected word:" << randomlySelectedWord;
         } else {
             qDebug() << "The file is empty.";
@@ -70,9 +81,10 @@ void MainWindow::selectRandomWord(bool initGameList, bool initAssistantList) {
     }
 }
 
-
+// Description: Processes the user's guess, updates the game interface, and handles game logic.
 void MainWindow::checkGuess() {
 
+	// Loads guessed word from QLineEdits
     QString guessedWord = ui->lineEdit_1->text().toLower() +
                               ui->lineEdit_2->text().toLower() +
                               ui->lineEdit_3->text().toLower() +
@@ -82,9 +94,14 @@ void MainWindow::checkGuess() {
 
     // Check if the guessed word matches the randomly selected word
     if (guessedWord != "" && guessedWord.size() == 5 && textArray.contains(guessedWord)) {
+		
+		// Increment guess count
         gameGuessCount = gameGuessCount + 1;
 
+		// Iterate through each letter in guessed word
         for (int i = 0; i < 5; ++i) {
+			
+            // Initialize variable labels
             QString labelObjectName = QString("label_%1_%2").arg(gameGuessCount).arg(i + 1);
             QLabel* currentLabel = this->findChild<QLabel*>(labelObjectName);
             QString labelLetterName = QString("label_%1").arg(guessedWord[i]);
@@ -92,6 +109,8 @@ void MainWindow::checkGuess() {
 
             if (currentLabel) {
                 QString color = "";
+
+                // Change label values and colors
                 currentLabel->setText(QString(guessedWord[i]).toUpper());
                 if (guessedWord[i] == randomlySelectedWord[i]) {
                     currentLabel->setStyleSheet("color: green;");
@@ -111,11 +130,16 @@ void MainWindow::checkGuess() {
                     letterLabel->setStyleSheet("color: red;");
                     color = "red";
                 }
+
+                // Trim word list based on result and current index
                 trimGameWordList(guessedWord[i], color, i);
             }
         }
 
+        // Update and display current word list
         displayFilteredGameList();
+
+        // Update UI
         ui->remainingWordsLabel->setText("Words Remaining: " + QString::number(gameList.size()));
         ui->guessCountLabel->setText("Guesses: " + QString::number(gameGuessCount));
         ui->lineEdit_1->setText("");
@@ -131,6 +155,7 @@ void MainWindow::checkGuess() {
         qDebug() << "Please enter a valid five-letter word.";
     }
 
+    // Handle end of game text
     if (gameGuessCount == 6 || guessedWord == randomlySelectedWord) {
         ui->guessButton->setEnabled(false);
         if (gameGuessCount == 6 && guessedWord != randomlySelectedWord) {
@@ -142,7 +167,10 @@ void MainWindow::checkGuess() {
     }
 }
 
+// Description: Processes the assistant's guess, updates its display, and handles assistant's logic.
 void MainWindow::updateAssistant(){
+
+    // Loads guessed word from QLineEdits
     QString guessedWord = ui->lineEdit_1_assist->text().toLower() +
                           ui->lineEdit_2_assist->text().toLower() +
                           ui->lineEdit_3_assist->text().toLower() +
@@ -154,7 +182,10 @@ void MainWindow::updateAssistant(){
     if (guessedWord != "" && guessedWord.size() == 5 && textArray.contains(guessedWord)) {
         assistantGuessCount = assistantGuessCount + 1;
 
+        // Iterate through each letter in guessed word
         for (int i = 0; i < 5; ++i) {
+
+            // Initialize variable labels and combo boxes
             QString labelObjectName = QString("label_%1_%2_assist").arg(assistantGuessCount).arg(i + 1);
             QLabel* currentLabel = this->findChild<QLabel*>(labelObjectName);
             QString labelLetterName = QString("label_%1_2").arg(guessedWord[i]);
@@ -163,20 +194,25 @@ void MainWindow::updateAssistant(){
             QComboBox* colorComboBox = this->findChild<QComboBox*>(colorComboName);
 
             if (currentLabel) {
+
+                // Change label values and colors
                 QString color = colorComboBox->currentText().toLower();
                 currentLabel->setText(QString(guessedWord[i]).toUpper());
                 QString labelStyleSheet = "color: " + color + ";";
                 currentLabel->setStyleSheet(labelStyleSheet);
                 letterLabel->setStyleSheet(labelStyleSheet);
 
+                // Trim word list based on result and current index
                 trimAssistantWordList(guessedWord[i], color, i);
             }
         }
 
+        // Update and display current word list
         displayFilteredAssistList();
+
+        // Update UI
         ui->remainingWordsLabel_assist->setText("Words Remaining: " + QString::number(assistList.size()));
         ui->guessCountLabel_assist->setText("Guesses: " + QString::number(assistantGuessCount));
-
         ui->lineEdit_1_assist->setText("");
         ui->lineEdit_2_assist->setText("");
         ui->lineEdit_3_assist->setText("");
@@ -189,13 +225,20 @@ void MainWindow::updateAssistant(){
         ui->assistantFeedbackLabel->setText("Please enter a valid five-letter word.");
     }
 
+    // Handle end of game text
     if (assistantGuessCount == 6) {
         ui->updateButton->setEnabled(false);
         ui->assistantFeedbackLabel->setText("Out of guesses!");
     }
 }
 
+// Inputs: const QString& guessedLetter - Guessed letter
+//         const QString& color - Color of the guessed letter (green, orange, red)
+//         int i - Index of the guessed letter in the word
+// Description: Eliminates words from the game word list based on guessed letters and colors.
 void MainWindow::trimGameWordList(const QString& guessedLetter, const QString& color, int i) {
+
+    // Eliminate words without correct letter in current index
     if (color == "green") {
         for (int j = 0; j < gameList.size(); ++j) {
             if  (guessedLetter != gameList[j][i]) {
@@ -205,6 +248,7 @@ void MainWindow::trimGameWordList(const QString& guessedLetter, const QString& c
         }
 
     }
+    // Eliminate words not containing correct letter or correct letter in wrong position
     else if (color == "orange") {
         for (int j = 0; j < gameList.size(); ++j) {
             if  (!gameList[j].contains(guessedLetter) || guessedLetter == gameList[j][i]) {
@@ -213,6 +257,7 @@ void MainWindow::trimGameWordList(const QString& guessedLetter, const QString& c
             }
         }
     }
+    // Eliminate words containing incorrect letter
     else if (color == "red") {
         for (int j = 0; j < gameList.size(); ++j) {
             if  (gameList[j].contains(guessedLetter)) {
@@ -223,7 +268,12 @@ void MainWindow::trimGameWordList(const QString& guessedLetter, const QString& c
     }
 }
 
+// Inputs: const QString& guessedLetter - Guessed letter
+//         const QString& color - Color of the guessed letter (green, orange, red)
+//         int i - Index of the guessed letter in the word
+// Description: Eliminates words from the assistant word list based on guessed letters and colors.
 void MainWindow::trimAssistantWordList(const QString& guessedLetter, const QString& color, int i) {
+    // Eliminate words without correct letter in current index
     if (color == "green") {
         for (int j = 0; j < assistList.size(); ++j) {
             if  (guessedLetter != assistList[j][i]) {
@@ -233,6 +283,7 @@ void MainWindow::trimAssistantWordList(const QString& guessedLetter, const QStri
         }
 
     }
+    // Eliminate words not containing correct letter or correct letter in wrong position
     else if (color == "orange") {
         for (int j = 0; j < assistList.size(); ++j) {
             if  (!assistList[j].contains(guessedLetter) || guessedLetter == assistList[j][i]) {
@@ -241,6 +292,7 @@ void MainWindow::trimAssistantWordList(const QString& guessedLetter, const QStri
             }
         }
     }
+    // Eliminate words containing incorrect letter
     else if (color == "red") {
         for (int j = 0; j < assistList.size(); ++j) {
             if  (assistList[j].contains(guessedLetter)) {
@@ -251,41 +303,45 @@ void MainWindow::trimAssistantWordList(const QString& guessedLetter, const QStri
     }
 }
 
-
+// Inputs: bool initGameList - Flag indicating whether to display the game word list
+//         bool initAssistantList - Flag indicating whether to display the assistant word list
+// Description: Loads initial filtered lists from a file and displays them in the UI based on input flags.
 void MainWindow::displayInitialList(bool initGameList, bool initAssistantList) {
-    std::ifstream file("initialFilteredList.txt"); // Replace "../initialFilteredList.txt" with your file's path
-
+    // Display initial guess list from .txt file to save computational time
+    std::ifstream file("initialFilteredList.txt");
     if (file.is_open()) {
         QString textToDisplay;
         std::string line;
 
+        // Add each line and a newline character
         while (std::getline(file, line)) {
-            textToDisplay += QString::fromStdString(line) + "\n"; // Add each line and a newline character
+            textToDisplay += QString::fromStdString(line) + "\n";
         }
 
-        file.close(); // Close the file after reading
+        file.close();
 
         // Set the text of the QTextEdit to the accumulated text
-
         if (initGameList) {
             ui->textEdit->setText(textToDisplay);
             ui->remainingWordsLabel->setText("Words Remaining: " + QString::number(gameList.size()));
             ui->guessCountLabel->setText("Guesses: " + QString::number(gameGuessCount));
         }
-
         if (initAssistantList) {
             ui->textEdit_assist->setText(textToDisplay);
             ui->remainingWordsLabel_assist->setText("Words Remaining: " + QString::number(gameList.size()));
             ui->guessCountLabel_assist->setText("Guesses: " + QString::number(gameGuessCount));
         }
 
-
     } else {
         qDebug() << "Unable to open the initial filtered list file.";
     }
 }
 
+// Inputs: const QString& word - Word for which unique letters need to be counted
+// Outputs: int - Count of unique letters in the word
+// Description: Calculates and returns the count of unique letters in a word.
 int countUniqueLetters(const QString& word) {
+    // Find unique letter count in word
     std::set<QChar> uniqueChars;
     for (const QChar& ch : word) {
         uniqueChars.insert(ch);
@@ -293,6 +349,7 @@ int countUniqueLetters(const QString& word) {
     return uniqueChars.size();
 }
 
+// Description: Calculates and displays the filtered game word list in the UI.
 void MainWindow::displayFilteredGameList() {
     QMap<QString, int> wordEliminationCounts;
 
@@ -325,6 +382,7 @@ void MainWindow::displayFilteredGameList() {
     ui->textEdit->setText(textToDisplay);
 }
 
+// Description: Calculates and displays the filtered assistant word list in the UI.
 void MainWindow::displayFilteredAssistList() {
     QMap<QString, int> wordEliminationCounts;
 
@@ -354,8 +412,12 @@ void MainWindow::displayFilteredAssistList() {
     ui->textEdit_assist->setText(textToDisplay);
 }
 
+// Inputs: const QString& word - Word for which the minimax value needs to be calculated
+// Outputs: int - Minimax value for the word in the game
+// Description: Calculates and returns the minimax value for a word in the game.
 int MainWindow::calculateMinimax(const QString& word) {
-    int minMaxImpact = INT_MAX; // Initialize with a high value to find the minimum impact
+    // Initialize with a high value to find the minimum impact
+    int minMaxImpact = INT_MAX;
 
     for (int letterIndex = 0; letterIndex < word.size(); ++letterIndex) {
         QString guessedLetter = word[letterIndex];
@@ -388,8 +450,12 @@ int MainWindow::calculateMinimax(const QString& word) {
     return minMaxImpact;
 }
 
+// Inputs: const QString& word - Word for which the minimax value needs to be calculated
+// Outputs: int - Minimax value for the word in the assistant's guesses
+// Description: Calculates and returns the minimax value for a word in the assistant's guesses.
 int MainWindow::calculateAssistantMinimax(const QString& word) {
-    int minMaxImpact = INT_MAX; // Initialize with a high value to find the minimum impact
+    // Initialize with a high value to find the minimum impact
+    int minMaxImpact = INT_MAX;
 
     for (int letterIndex = 0; letterIndex < word.size(); ++letterIndex) {
         QString guessedLetter = word[letterIndex];
@@ -422,6 +488,7 @@ int MainWindow::calculateAssistantMinimax(const QString& word) {
     return minMaxImpact;
 }
 
+// Description: Resets game-related variables and elements in the UI to restart the game.
 void MainWindow::restartGame() {
     // Reset Feedback Text
     ui->gameFeedbackLabel->setText("");
@@ -461,6 +528,7 @@ void MainWindow::restartGame() {
 
 }
 
+// Description: Resets assistant-related variables and elements in the UI to restart its guessing process.
 void MainWindow::restartAssistant() {
     // Reset Feedback Text
     ui->assistantFeedbackLabel->setText("");
